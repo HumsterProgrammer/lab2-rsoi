@@ -1,5 +1,4 @@
 import os
-import time
 import psycopg2
 from flask import Flask, request, jsonify
 
@@ -26,39 +25,10 @@ def compute_status(count: int):
     return "BRONZE", 5
 
 
-def init_db():
-    for _ in range(30):
-        try:
-            conn = get_conn()
-            break
-        except psycopg2.OperationalError:
-            time.sleep(1)
-    else:
-        raise RuntimeError("Cannot connect to DB")
-    with conn, conn.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS loyalty (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(80) NOT NULL UNIQUE,
-                reservation_count INT NOT NULL DEFAULT 0,
-                status VARCHAR(80) NOT NULL DEFAULT 'BRONZE'
-                    CHECK (status IN ('BRONZE','SILVER','GOLD')),
-                discount INT NOT NULL
-            );
-        """)
-        cur.execute("SELECT COUNT(*) FROM loyalty")
-        if cur.fetchone()[0] == 0:
-            cur.execute(
-                "INSERT INTO loyalty (username, reservation_count, status, discount) "
-                "VALUES (%s, %s, %s, %s)",
-                ("Test Max", 25, "GOLD", 10),
-            )
-    conn.close()
-
-
 @app.route("/manage/health", methods=["GET"])
 def health():
     return "Up", 200
+
 
 @app.route("/api/v1/loyalty", methods=["GET"])
 def get_loyalty():
@@ -68,18 +38,14 @@ def get_loyalty():
     conn = get_conn()
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT username, reservation_count, status, discount FROM loyalty WHERE username=%s",
+            "SELECT reservation_count, status, discount FROM loyalty WHERE username=%s",
             (username,),
         )
         row = cur.fetchone()
     conn.close()
     if not row:
         return jsonify({"message": "User not found"}), 404
-    return jsonify({
-        "status": row[2],
-        "discount": row[3],
-        "reservationCount": row[1],
-    }), 200
+    return jsonify({"status": row[1], "discount": row[2], "reservationCount": row[0]}), 200
 
 
 def _change_count(username, delta):
@@ -105,7 +71,7 @@ def _change_count(username, delta):
 
 @app.route("/api/v1/loyalty/increment", methods=["POST"])
 def increment():
-    username = request.headers.get("X-User-Name") or (request.get_json(silent=True) or {}).get("username")
+    username = request.headers.get("X-User-Name")
     if not username:
         return jsonify({"message": "X-User-Name header is required"}), 400
     result = _change_count(username, +1)
@@ -116,7 +82,7 @@ def increment():
 
 @app.route("/api/v1/loyalty/decrement", methods=["POST"])
 def decrement():
-    username = request.headers.get("X-User-Name") or (request.get_json(silent=True) or {}).get("username")
+    username = request.headers.get("X-User-Name")
     if not username:
         return jsonify({"message": "X-User-Name header is required"}), 400
     result = _change_count(username, -1)
@@ -126,5 +92,4 @@ def decrement():
 
 
 if __name__ == "__main__":
-    #init_db()
     app.run(host="0.0.0.0", port=8050)

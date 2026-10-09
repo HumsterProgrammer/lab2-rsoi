@@ -1,5 +1,4 @@
 import os
-import time
 import uuid
 import psycopg2
 from flask import Flask, request, jsonify
@@ -19,40 +18,21 @@ def get_conn():
     return psycopg2.connect(**DB_CONFIG)
 
 
-def init_db():
-    for _ in range(30):
-        try:
-            conn = get_conn()
-            break
-        except psycopg2.OperationalError:
-            time.sleep(1)
-    else:
-        raise RuntimeError("Cannot connect to DB")
-    with conn, conn.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS payment (
-                id SERIAL PRIMARY KEY,
-                payment_uid uuid NOT NULL UNIQUE,
-                status VARCHAR(20) NOT NULL
-                    CHECK (status IN ('PAID','CANCELED')),
-                price INT NOT NULL
-            );
-        """)
-    conn.close()
-
-
 @app.route("/manage/health", methods=["GET"])
 def health():
     return "Up", 200
+
 
 @app.route("/api/v1/payments", methods=["POST"])
 def create_payment():
     data = request.get_json(silent=True) or {}
     price = data.get("price")
-    if price is None or not isinstance(price, (int, float)):
-        return jsonify({"message": "price is required"}), 400
-    payment_uid = str(uuid.uuid4())
+    if not isinstance(price, (int, float)) or isinstance(price, bool):
+        return jsonify({"message": "price must be a number"}), 400
     price = int(price)
+    if price < 0:
+        return jsonify({"message": "price must be non-negative"}), 400
+    payment_uid = str(uuid.uuid4())
     conn = get_conn()
     with conn, conn.cursor() as cur:
         cur.execute(
@@ -96,5 +76,4 @@ def cancel_payment(payment_uid):
 
 
 if __name__ == "__main__":
-    #init_db()
     app.run(host="0.0.0.0", port=8060)
