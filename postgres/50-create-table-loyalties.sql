@@ -9,5 +9,5 @@ CREATE TABLE loyalty
     discount          INT         NOT NULL
 );
 
-INSERT INTO loyalty VALUES (1, "Test Max", 25, "GOLD", 10);
+INSERT INTO loyalty VALUES (1, 'Test Max', 25, 'GOLD', 10);
 
