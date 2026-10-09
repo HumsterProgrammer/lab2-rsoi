@@ -100,13 +100,20 @@ def health():
 @app.route("/api/v1/hotels", methods=["GET"])
 def list_hotels():
     try:
-        page = int(request.args.get("page", 0))
+        page = int(request.args.get("page", 1))
         size = int(request.args.get("size", 10))
-    except ValueError:
+    except (TypeError, ValueError):
         return jsonify({"message": "Invalid pagination params"}), 400
-    if page < 0 or size < 1:
-        return jsonify({"message": "Invalid pagination params"}), 400
-    offset = page * size
+
+    # 1-based: page=1 — первая страница. page<=0 трактуем как первую.
+    if page < 1:
+        page = 1
+    if size < 1:
+        size = 10
+    if size > 100:
+        size = 100
+
+    offset = (page - 1) * size
     conn = get_conn()
     with conn.cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM hotels")
@@ -117,7 +124,6 @@ def list_hotels():
             (size, offset),
         )
         rows = cur.fetchall()
-        print(rows)
     conn.close()
     return jsonify({
         "page": page,
