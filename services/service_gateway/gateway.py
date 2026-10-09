@@ -31,11 +31,14 @@ def _forward(method, url, pass_headers=None, params=None, json_body=None):
 
 # ============ EXTERNAL ============
 
+@app.route("/manage/health", methods=["GET"])
+def health():
+    return "Up", 200
+
 @app.route("/api/v1/hotels", methods=["GET"])
 def get_hotels():
     return _forward("GET", f"{RESERVATION_URL}/api/v1/hotels",
                     params=request.args.to_dict())
-
 
 @app.route("/api/v1/me", methods=["GET"])
 def get_me():

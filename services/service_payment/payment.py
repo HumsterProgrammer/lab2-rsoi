@@ -41,6 +41,10 @@ def init_db():
     conn.close()
 
 
+@app.route("/manage/health", methods=["GET"])
+def health():
+    return "Up", 200
+
 @app.route("/api/v1/payments", methods=["POST"])
 def create_payment():
     data = request.get_json(silent=True) or {}

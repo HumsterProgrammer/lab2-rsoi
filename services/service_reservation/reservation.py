@@ -93,6 +93,10 @@ def _hotel_info(row):
 
 # -------- HOTELS --------
 
+@app.route("/manage/health", methods=["GET"])
+def health():
+    return "Up", 200
+
 @app.route("/api/v1/hotels", methods=["GET"])
 def list_hotels():
     try:

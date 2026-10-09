@@ -56,6 +56,10 @@ def init_db():
     conn.close()
 
 
+@app.route("/manage/health", methods=["GET"])
+def health():
+    return "Up", 200
+
 @app.route("/api/v1/loyalty", methods=["GET"])
 def get_loyalty():
     username = request.headers.get("X-User-Name")
